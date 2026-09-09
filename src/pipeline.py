@@ -8,19 +8,23 @@ from src.visualization.overlay import draw_tracks
 
 
 class TrackingPipeline:
-    def __init__(self, camera, tracker, distance_estimator, speed_estimator):
+    def __init__(self, camera, tracker, distance_estimator, speed_estimator, depth_every_n_frames: int = 3):
         self.camera = camera
         self.tracker = tracker
         self.distance_estimator = distance_estimator
         self.speed_estimator = speed_estimator
+        self.depth_every_n_frames = depth_every_n_frames
+        self._frame_count = 0
 
     def run(self):
         while True:
             ok, frame = self.camera.read()
             if not ok:
-                break
+                continue  # threaded capture — just wait for the next frame, don't break
 
-            self.distance_estimator.set_frame(frame)  # depth map computed once per frame
+            if self._frame_count % self.depth_every_n_frames == 0:
+                self.distance_estimator.set_frame(frame)  # only recompute depth every Nth frame
+            self._frame_count += 1
 
             tracks = self.tracker.update(frame)
             tracks = [self.distance_estimator.estimate(t) for t in tracks]

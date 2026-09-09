@@ -9,19 +9,22 @@ class MonocularDepthEstimator:
     def __init__(self, model_size: str = "base", device: str | None = None):
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         model_id = f"depth-anything/Depth-Anything-V2-Metric-Indoor-{model_size.capitalize()}-hf"
-        self.pipe = pipeline(task="depth-estimation", model=model_id, device=device,
-                             torch_dtype=torch.float16 if device == "cuda" else torch.float32)
+        self.pipe = pipeline(task="depth-estimation", model=model_id, device=device)
 
     def estimate_depth_map(self, frame: np.ndarray) -> np.ndarray:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(rgb)          # <-- the fix: numpy array -> PIL Image
+        pil_image = Image.fromarray(rgb)
 
         result = self.pipe(pil_image)
-        depth = np.array(result["depth"], dtype=np.float32)
 
-        if depth.shape[:2] != frame.shape[:2]:
-            depth = cv2.resize(depth, (frame.shape[1], frame.shape[0]))
-        return depth
+        # IMPORTANT: result["depth"] is a normalized 0-255 PIL Image for display only.
+        # result["predicted_depth"] is the raw metric tensor in actual meters — use this.
+        depth_tensor = result["predicted_depth"]
+        depth_map = depth_tensor.squeeze().detach().cpu().numpy().astype(np.float32)
+
+        if depth_map.shape[:2] != frame.shape[:2]:
+            depth_map = cv2.resize(depth_map, (frame.shape[1], frame.shape[0]))
+        return depth_map
 
     @staticmethod
     def read_depth_at(depth_map: np.ndarray, x: int, y: int, patch: int = 5) -> float:
