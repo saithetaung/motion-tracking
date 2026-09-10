@@ -1,3 +1,4 @@
+import time
 import cv2
 from src.camera.webcam_source import WebcamSource
 from src.detection_tracking.tracker import PersonTracker
@@ -8,7 +9,7 @@ from src.visualization.overlay import draw_tracks
 
 
 class TrackingPipeline:
-    def __init__(self, camera, tracker, distance_estimator, speed_estimator, depth_every_n_frames: int = 3):
+    def __init__(self, camera, tracker, distance_estimator, speed_estimator, depth_every_n_frames: int = 6):
         self.camera = camera
         self.tracker = tracker
         self.distance_estimator = distance_estimator
@@ -20,15 +21,27 @@ class TrackingPipeline:
         while True:
             ok, frame = self.camera.read()
             if not ok:
-                continue  # threaded capture — just wait for the next frame, don't break
+                continue
+
+            # ---- TIMING START ----
+            t0 = time.time()
 
             if self._frame_count % self.depth_every_n_frames == 0:
-                self.distance_estimator.set_frame(frame)  # only recompute depth every Nth frame
-            self._frame_count += 1
+                self.distance_estimator.set_frame(frame)
+            t1 = time.time()
 
             tracks = self.tracker.update(frame)
+            t2 = time.time()
+
             tracks = [self.distance_estimator.estimate(t) for t in tracks]
             tracks = [self.speed_estimator.update(t) for t in tracks]
+            t3 = time.time()
+
+            # print(f"Depth: {(t1-t0)*1000:.0f}ms | YOLO: {(t2-t1)*1000:.0f}ms | "
+            #       f"Distance+Speed: {(t3-t2)*1000:.0f}ms | Total: {(t3-t0)*1000:.0f}ms")
+            # ---- TIMING END ----
+
+            self._frame_count += 1
 
             frame = draw_tracks(frame, tracks)
             cv2.imshow("Human Tracking Demo (press q to quit)", frame)
@@ -37,7 +50,6 @@ class TrackingPipeline:
 
         self.camera.release()
         cv2.destroyAllWindows()
-
 
 def build_pipeline(single_person_mode: bool = True) -> TrackingPipeline:
     camera = WebcamSource()

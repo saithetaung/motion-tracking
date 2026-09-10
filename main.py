@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+from src.pipeline import build_pipeline
 from src.pipeline import build_pipeline
 
 if __name__ == "__main__":

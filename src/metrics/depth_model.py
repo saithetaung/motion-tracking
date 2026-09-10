@@ -9,7 +9,8 @@ class MonocularDepthEstimator:
     def __init__(self, model_size: str = "base", device: str | None = None):
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         model_id = f"depth-anything/Depth-Anything-V2-Metric-Indoor-{model_size.capitalize()}-hf"
-        self.pipe = pipeline(task="depth-estimation", model=model_id, device=device)
+        self.pipe = pipeline(task="depth-estimation", model=model_id, device=device,
+                             dtype=torch.float16 if device == "cuda" else torch.float32)
 
     def estimate_depth_map(self, frame: np.ndarray) -> np.ndarray:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
