@@ -1,6 +1,7 @@
 import time
 import cv2
 from src.camera.webcam_source import WebcamSource
+from src.camera.a8mini_source import A8MiniSource
 from src.detection_tracking.tracker import PersonTracker
 from src.metrics.depth_model import MonocularDepthEstimator
 from src.metrics.distance_estimator import DistanceEstimator
@@ -23,23 +24,12 @@ class TrackingPipeline:
             if not ok:
                 continue
 
-            # ---- TIMING START ----
-            t0 = time.time()
-
             if self._frame_count % self.depth_every_n_frames == 0:
                 self.distance_estimator.set_frame(frame)
-            t1 = time.time()
 
             tracks = self.tracker.update(frame)
-            t2 = time.time()
-
             tracks = [self.distance_estimator.estimate(t) for t in tracks]
             tracks = [self.speed_estimator.update(t) for t in tracks]
-            t3 = time.time()
-
-            # print(f"Depth: {(t1-t0)*1000:.0f}ms | YOLO: {(t2-t1)*1000:.0f}ms | "
-            #       f"Distance+Speed: {(t3-t2)*1000:.0f}ms | Total: {(t3-t0)*1000:.0f}ms")
-            # ---- TIMING END ----
 
             self._frame_count += 1
 
@@ -51,9 +41,16 @@ class TrackingPipeline:
         self.camera.release()
         cv2.destroyAllWindows()
 
-def build_pipeline(single_person_mode: bool = True) -> TrackingPipeline:
-    camera = WebcamSource()
-    focal_length_px = camera.get_focal_length_px()  # still needed by SpeedEstimator below
+
+def build_pipeline(single_person_mode: bool = True, camera_type: str = "webcam") -> TrackingPipeline:
+    if camera_type == "webcam":
+        camera = WebcamSource()
+    elif camera_type == "a8mini":
+        camera = A8MiniSource()
+    else:
+        raise ValueError(f"Unknown camera_type: {camera_type!r}. Use 'webcam' or 'a8mini'.")
+
+    focal_length_px = camera.get_focal_length_px()
 
     tracker = PersonTracker(max_people=1 if single_person_mode else None)
     depth_model = MonocularDepthEstimator(model_size="small")

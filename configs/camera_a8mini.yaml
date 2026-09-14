@@ -1,0 +1,22 @@
+# SIYI A8 Mini — RTSP camera configuration
+# Requires: PC has a static IP on the 192.168.144.x subnet (e.g. 192.168.144.20),
+# connected via Ethernet to the camera/gimbal, before this stream is reachable.
+# Test with `ping 192.168.144.25` and verify the stream opens in VLC before running the pipeline.
+
+camera:
+  rtsp_url: "rtsp://192.168.144.25:8554/main.264"
+  width: 1080
+  height: 720
+
+calibration:
+  focal_length_px: 1920.0   # placeholder — this is NOT the webcam's calibrated value.
+  calibrated: false          # the A8 Mini has a different lens/FOV, needs its own calibration run
+  calibrated_at: null
+  reprojection_error: null
+
+distance_estimation:
+  assumed_person_height_m: 1.7   # unused now that distance comes from the depth model — kept for reference/fallback
+
+connection:
+  reconnect_attempts: 5
+  reconnect_delay_sec: 2
