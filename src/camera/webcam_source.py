@@ -15,7 +15,7 @@ class WebcamSource(CameraSource):
     waiting on the camera, and never processes a backlog of stale frames.
     """
 
-    def __init__(self, device_id: int = 0, width: int = 1080, height: int = 720,
+    def __init__(self, device_id: int = 0, width: int = 1920, height: int = 1080,
                  target_fps: int =60, config_path: str = DEFAULT_CONFIG_PATH):
         self.cap = cv2.VideoCapture(device_id, cv2.CAP_DSHOW)
 

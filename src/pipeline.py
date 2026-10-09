@@ -1,4 +1,3 @@
-import time
 import cv2
 from src.camera.webcam_source import WebcamSource
 from src.camera.a8mini_source import A8MiniSource
@@ -6,15 +5,18 @@ from src.detection_tracking.tracker import PersonTracker
 from src.metrics.depth_model import MonocularDepthEstimator
 from src.metrics.distance_estimator import DistanceEstimator
 from src.metrics.speed_estimator import SpeedEstimator
+from src.recognition.face_identifier import FaceIdentifier
 from src.visualization.overlay import draw_tracks
 
 
 class TrackingPipeline:
-    def __init__(self, camera, tracker, distance_estimator, speed_estimator, depth_every_n_frames: int = 6):
+    def __init__(self, camera, tracker, distance_estimator, speed_estimator,
+                 face_identifier=None, depth_every_n_frames: int = 6):
         self.camera = camera
         self.tracker = tracker
         self.distance_estimator = distance_estimator
         self.speed_estimator = speed_estimator
+        self.face_identifier = face_identifier
         self.depth_every_n_frames = depth_every_n_frames
         self._frame_count = 0
 
@@ -28,6 +30,8 @@ class TrackingPipeline:
                 self.distance_estimator.set_frame(frame)
 
             tracks = self.tracker.update(frame)
+            if self.face_identifier:
+                tracks = self.face_identifier.update(frame, tracks)   # NEW
             tracks = [self.distance_estimator.estimate(t) for t in tracks]
             tracks = [self.speed_estimator.update(t) for t in tracks]
 
@@ -42,7 +46,8 @@ class TrackingPipeline:
         cv2.destroyAllWindows()
 
 
-def build_pipeline(single_person_mode: bool = True, camera_type: str = "webcam") -> TrackingPipeline:
+def build_pipeline(single_person_mode: bool = True, camera_type: str = "webcam",
+                   identify_faces: bool = True) -> TrackingPipeline:
     if camera_type == "webcam":
         camera = WebcamSource()
     elif camera_type == "a8mini":
@@ -56,5 +61,7 @@ def build_pipeline(single_person_mode: bool = True, camera_type: str = "webcam")
     depth_model = MonocularDepthEstimator(model_size="small")
     distance_estimator = DistanceEstimator(depth_model=depth_model)
     speed_estimator = SpeedEstimator(focal_length_px=focal_length_px)
+    face_identifier = FaceIdentifier("known_faces") if identify_faces else None
 
-    return TrackingPipeline(camera, tracker, distance_estimator, speed_estimator)
+    return TrackingPipeline(camera, tracker, distance_estimator, speed_estimator,
+                            face_identifier=face_identifier)

@@ -15,6 +15,10 @@ env/
 .venv/
 ENV/
 
+# --- naming on person ----
+known_faces/
+models/
+
 # ---- Environment / secrets ----
 .env
 .env.*
